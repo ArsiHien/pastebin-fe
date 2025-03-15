@@ -1,100 +1,149 @@
-"use client"
+"use client";
 
-import { useEffect, useState } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { BarChart, Bar, XAxis, YAxis, LineChart, Line, AreaChart, Area, CartesianGrid } from "recharts"
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Clock, Eye } from "lucide-react"
-import { formatTimeRemaining } from "@/lib/utils"
+import { useEffect, useState } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
-  type ChartDataPoint,
-  fetchHourlyChartData,
-  fetchMonthlyChartData,
-  fetchWeeklyChartData,
-} from "@/lib/api-client"
-import { ChartSkeleton } from "./chart-skeleton"
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  LineChart,
+  Line,
+  AreaChart,
+  Area,
+  CartesianGrid,
+} from "recharts";
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+} from "@/components/ui/chart";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Clock, Eye, RefreshCw } from "lucide-react";
+import {
+  type AnalyticsResponse,
+  type TimeSeriesPoint,
+  fetchHourlyAnalytics,
+  fetchMonthlyAnalytics,
+  fetchWeeklyAnalytics,
+} from "@/lib/api-client";
+import { ChartSkeleton } from "./chart-skeleton";
+import { formatTimestamp } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { ErrorMessage } from "./error-message";
 
 interface PasteStatisticsProps {
-  pasteId: string
-  views: number
-  expiresAt: string | null
-  createdAt: string
+  pasteUrl: string;
+  totalViews: number;
+  remainingTime: string;
 }
 
-export function PasteStatistics({ pasteId, views, expiresAt, createdAt }: PasteStatisticsProps) {
-  const [timeRemaining, setTimeRemaining] = useState<string | null>(
-    expiresAt ? formatTimeRemaining(new Date(expiresAt)) : null,
-  )
-  const [selectedPeriod, setSelectedPeriod] = useState("hourly")
-  const [chartData, setChartData] = useState<ChartDataPoint[]>([])
-  const [isLoading, setIsLoading] = useState(true)
+export function PasteStatistics({
+  pasteUrl,
+  totalViews,
+  remainingTime,
+}: PasteStatisticsProps) {
+  const [selectedPeriod, setSelectedPeriod] = useState("hourly");
+  const [analyticsData, setAnalyticsData] = useState<AnalyticsResponse | null>(
+    null
+  );
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Fetch chart data when period changes
-  useEffect(() => {
-    async function fetchChartData() {
-      setIsLoading(true)
-      try {
-        let data: ChartDataPoint[]
+  // Fetch analytics data when period changes
+  const fetchAnalyticsData = async () => {
+    setIsLoading(true);
+    setError(null);
 
-        switch (selectedPeriod) {
-          case "hourly":
-            data = await fetchHourlyChartData(pasteId)
-            break
-          case "weekly":
-            data = await fetchWeeklyChartData(pasteId)
-            break
-          case "monthly":
-            data = await fetchMonthlyChartData(pasteId)
-            break
-          default:
-            data = await fetchHourlyChartData(pasteId)
-        }
+    try {
+      let data: AnalyticsResponse;
 
-        setChartData(data)
-      } catch (error) {
-        console.error("Error fetching chart data:", error)
-        // Fallback to empty data
-        setChartData([])
-      } finally {
-        setIsLoading(false)
+      switch (selectedPeriod) {
+        case "hourly":
+          data = await fetchHourlyAnalytics(pasteUrl);
+          break;
+        case "weekly":
+          data = await fetchWeeklyAnalytics(pasteUrl);
+          break;
+        case "monthly":
+          data = await fetchMonthlyAnalytics(pasteUrl);
+          break;
+        default:
+          data = await fetchHourlyAnalytics(pasteUrl);
       }
+
+      setAnalyticsData(data);
+    } catch (error) {
+      console.error("Error fetching analytics data:", error);
+      setError(
+        error instanceof Error ? error.message : "Failed to load analytics data"
+      );
+      // Fallback to empty data
+      setAnalyticsData(null);
+    } finally {
+      setIsLoading(false);
     }
+  };
 
-    fetchChartData()
-  }, [pasteId, selectedPeriod])
-
-  // Update expiration countdown
   useEffect(() => {
-    if (!expiresAt) return
-
-    const interval = setInterval(() => {
-      const remaining = formatTimeRemaining(new Date(expiresAt))
-      setTimeRemaining(remaining)
-    }, 1000)
-
-    return () => clearInterval(interval)
-  }, [expiresAt])
+    fetchAnalyticsData();
+  }, [pasteUrl, selectedPeriod]);
 
   const getChartType = () => {
     switch (selectedPeriod) {
       case "hourly":
-        return "line"
+        return "line";
       case "weekly":
-        return "area"
+        return "area";
       case "monthly":
-        return "bar"
+        return "bar";
       default:
-        return "line"
+        return "line";
     }
-  }
+  };
+
+  const formatChartData = (timeSeries: TimeSeriesPoint[]) => {
+    return timeSeries.map((point) => ({
+      label: formatTimestamp(point.timestamp, selectedPeriod),
+      views: point.viewCount,
+    }));
+  };
 
   const renderChart = () => {
     if (isLoading) {
-      return <ChartSkeleton />
+      return <ChartSkeleton />;
     }
 
-    const chartType = getChartType()
+    if (error) {
+      return (
+        <div className="space-y-4">
+          <ErrorMessage message={error} />
+          <Button
+            variant="outline"
+            className="w-full flex items-center justify-center gap-2"
+            onClick={fetchAnalyticsData}
+          >
+            <RefreshCw className="h-4 w-4" />
+            Retry
+          </Button>
+        </div>
+      );
+    }
+
+    if (
+      !analyticsData ||
+      !analyticsData.timeSeries ||
+      analyticsData.timeSeries.length === 0
+    ) {
+      return (
+        <div className="h-[250px] flex items-center justify-center text-muted-foreground">
+          No data available for this time period
+        </div>
+      );
+    }
+
+    const chartData = formatChartData(analyticsData.timeSeries);
+    const chartType = getChartType();
 
     switch (chartType) {
       case "line":
@@ -110,7 +159,12 @@ export function PasteStatistics({ pasteId, views, expiresAt, createdAt }: PasteS
           >
             <LineChart data={chartData}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} />
-              <XAxis dataKey="label" fontSize={12} tickLine={false} axisLine={false} />
+              <XAxis
+                dataKey="label"
+                fontSize={12}
+                tickLine={false}
+                axisLine={false}
+              />
               <YAxis fontSize={12} tickLine={false} axisLine={false} />
               <ChartTooltip content={<ChartTooltipContent />} />
               <Line
@@ -123,7 +177,7 @@ export function PasteStatistics({ pasteId, views, expiresAt, createdAt }: PasteS
               />
             </LineChart>
           </ChartContainer>
-        )
+        );
       case "area":
         return (
           <ChartContainer
@@ -138,12 +192,25 @@ export function PasteStatistics({ pasteId, views, expiresAt, createdAt }: PasteS
             <AreaChart data={chartData}>
               <defs>
                 <linearGradient id="colorViews" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="var(--color-views)" stopOpacity={0.8} />
-                  <stop offset="95%" stopColor="var(--color-views)" stopOpacity={0} />
+                  <stop
+                    offset="5%"
+                    stopColor="var(--color-views)"
+                    stopOpacity={0.8}
+                  />
+                  <stop
+                    offset="95%"
+                    stopColor="var(--color-views)"
+                    stopOpacity={0}
+                  />
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" vertical={false} />
-              <XAxis dataKey="label" fontSize={12} tickLine={false} axisLine={false} />
+              <XAxis
+                dataKey="label"
+                fontSize={12}
+                tickLine={false}
+                axisLine={false}
+              />
               <YAxis fontSize={12} tickLine={false} axisLine={false} />
               <ChartTooltip content={<ChartTooltipContent />} />
               <Area
@@ -155,7 +222,7 @@ export function PasteStatistics({ pasteId, views, expiresAt, createdAt }: PasteS
               />
             </AreaChart>
           </ChartContainer>
-        )
+        );
       case "bar":
       default:
         return (
@@ -170,15 +237,25 @@ export function PasteStatistics({ pasteId, views, expiresAt, createdAt }: PasteS
           >
             <BarChart data={chartData}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} />
-              <XAxis dataKey="label" fontSize={12} tickLine={false} axisLine={false} />
+              <XAxis
+                dataKey="label"
+                fontSize={12}
+                tickLine={false}
+                axisLine={false}
+              />
               <YAxis fontSize={12} tickLine={false} axisLine={false} />
               <ChartTooltip content={<ChartTooltipContent />} />
-              <Bar dataKey="views" fill="var(--color-views)" radius={[4, 4, 0, 0]} maxBarSize={60} />
+              <Bar
+                dataKey="views"
+                fill="var(--color-views)"
+                radius={[4, 4, 0, 0]}
+                maxBarSize={60}
+              />
             </BarChart>
           </ChartContainer>
-        )
+        );
     }
-  }
+  };
 
   return (
     <div className="space-y-6">
@@ -190,19 +267,23 @@ export function PasteStatistics({ pasteId, views, expiresAt, createdAt }: PasteS
           <CardContent>
             <div className="flex items-center gap-2">
               <Eye className="h-5 w-5 text-muted-foreground" />
-              <span className="text-2xl font-bold">{views}</span>
+              <span className="text-2xl font-bold">{totalViews}</span>
             </div>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-base font-medium">{expiresAt ? "Expires In" : "Expiration"}</CardTitle>
+            <CardTitle className="text-base font-medium">
+              {remainingTime ? "Expires In" : "Expiration"}
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-2">
               <Clock className="h-5 w-5 text-muted-foreground" />
-              <span className="text-2xl font-bold">{timeRemaining || "Never"}</span>
+              <span className="text-2xl font-bold">
+                {remainingTime || "Never"}
+              </span>
             </div>
           </CardContent>
         </Card>
@@ -211,13 +292,20 @@ export function PasteStatistics({ pasteId, views, expiresAt, createdAt }: PasteS
       <Card>
         <CardHeader className="pb-2">
           <div className="flex items-center justify-between">
-            <CardTitle className="text-base font-medium">View Statistics</CardTitle>
+            <CardTitle className="text-base font-medium">
+              View Statistics
+            </CardTitle>
           </div>
         </CardHeader>
         <CardContent>
-          <Tabs defaultValue="hourly" value={selectedPeriod} onValueChange={setSelectedPeriod} className="mb-4">
+          <Tabs
+            defaultValue="hourly"
+            value={selectedPeriod}
+            onValueChange={setSelectedPeriod}
+            className="mb-4"
+          >
             <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="hourly">Last Hour</TabsTrigger>
+              <TabsTrigger value="hourly">Hourly</TabsTrigger>
               <TabsTrigger value="weekly">Weekly</TabsTrigger>
               <TabsTrigger value="monthly">Monthly</TabsTrigger>
             </TabsList>
@@ -227,6 +315,5 @@ export function PasteStatistics({ pasteId, views, expiresAt, createdAt }: PasteS
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }
-

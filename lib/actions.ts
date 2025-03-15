@@ -1,49 +1,38 @@
-"use server"
+"use server";
+import { createPasteApi, fetchPaste } from "./api-client";
 
-import { revalidatePath } from "next/cache"
-import { createPasteApi, fetchPaste, incrementPasteViewsApi } from "./api-client"
-
-// Expiration mapping
-const expirationMap: Record<string, number> = {
-  never: 0,
-  "10m": 10 * 60 * 1000,
-  "1h": 60 * 60 * 1000,
-  "1d": 24 * 60 * 60 * 1000,
-  "1w": 7 * 24 * 60 * 60 * 1000,
-  "1m": 30 * 24 * 60 * 60 * 1000,
-}
-
-export async function createPaste(content: string, expiration = "never") {
+export async function createPaste({
+  content,
+  policyType,
+  duration,
+}: {
+  content: string;
+  policyType: string;
+  duration: string;
+}) {
   try {
+    console.log("content:", content);
+    console.log("policyType:", policyType);
+    console.log("duration:", duration);
+
     const response = await createPasteApi({
       content,
-      expiration,
-    })
+      policyType,
+      duration,
+    });
 
-    return { id: response.id }
+    return { id: response.url };
   } catch (error) {
-    console.error("Error creating paste:", error)
-    throw error
+    console.error("Error creating paste:", error);
+    throw error;
   }
 }
 
-export async function getPaste(id: string) {
+export async function getPaste(url: string) {
   try {
-    return await fetchPaste(id)
+    return await fetchPaste(url);
   } catch (error) {
-    console.error(`Error fetching paste ${id}:`, error)
-    return null
+    console.error(`Error fetching paste ${url}:`, error);
+    return null;
   }
 }
-
-export async function incrementPasteViews(id: string) {
-  try {
-    await incrementPasteViewsApi(id)
-    revalidatePath(`/paste/${id}`)
-    return true
-  } catch (error) {
-    console.error(`Error incrementing views for paste ${id}:`, error)
-    return false
-  }
-}
-

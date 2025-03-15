@@ -14,27 +14,18 @@ export function formatDate(dateString: string): string {
   return date.toLocaleDateString("en-US", options)
 }
 
-export function formatTimeRemaining(expirationDate: Date): string {
-  const now = new Date()
+export function formatTimestamp(timestamp: string, period: string): string {
+  const date = new Date(timestamp)
 
-  if (expirationDate <= now) {
-    return "Expired"
-  }
-
-  const diffMs = expirationDate.getTime() - now.getTime()
-  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
-  const diffHours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
-  const diffMinutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60))
-  const diffSeconds = Math.floor((diffMs % (1000 * 60)) / 1000)
-
-  if (diffDays > 0) {
-    return `${diffDays}d ${diffHours}h ${diffMinutes}m`
-  } else if (diffHours > 0) {
-    return `${diffHours}h ${diffMinutes}m ${diffSeconds}s`
-  } else if (diffMinutes > 0) {
-    return `${diffMinutes}m ${diffSeconds}s`
-  } else {
-    return `${diffSeconds}s`
+  switch (period) {
+    case "hourly":
+      return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+    case "weekly":
+      return date.toLocaleDateString([], { weekday: "short" })
+    case "monthly":
+      return date.toLocaleDateString([], { month: "short" })
+    default:
+      return date.toLocaleString()
   }
 }
 

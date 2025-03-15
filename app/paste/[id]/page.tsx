@@ -2,10 +2,9 @@ import { notFound } from "next/navigation"
 import type { Metadata } from "next"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { getPaste, incrementPasteViews } from "@/lib/actions"
-import { formatDate } from "@/lib/utils"
+import { getPaste } from "@/lib/actions"
 import Link from "next/link"
-import { ArrowLeft, Clock } from "lucide-react"
+import { ArrowLeft } from "lucide-react"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { PasteStatistics } from "@/components/paste-statistics"
 
@@ -25,8 +24,8 @@ export async function generateMetadata({ params }: PastePageProps): Promise<Meta
   }
 
   return {
-    title: `Paste ${params.id}`,
-    description: `View paste created on ${formatDate(paste.createdAt)}`,
+    title: `Paste ${paste.url}`,
+    description: `View paste with ${paste.totalViews} views`,
   }
 }
 
@@ -37,10 +36,8 @@ export default async function PastePage({ params }: PastePageProps) {
     notFound()
   }
 
-  // Increment view count
-  await incrementPasteViews(params.id)
-
-  const isExpired = paste.expiresAt && new Date(paste.expiresAt) < new Date()
+  // Check if paste is expired (if remainingTime is "Expired")
+  const isExpired = paste.remainingTime === "Expired"
 
   if (isExpired) {
     return (
@@ -85,13 +82,7 @@ export default async function PastePage({ params }: PastePageProps) {
             <Card>
               <CardHeader className="border-b">
                 <div className="flex justify-between items-center">
-                  <CardTitle className="text-xl">Paste {params.id}</CardTitle>
-                  <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                    <div className="flex items-center gap-1">
-                      <Clock className="h-4 w-4" />
-                      <span>{formatDate(paste.createdAt)}</span>
-                    </div>
-                  </div>
+                  <CardTitle className="text-xl">Paste {paste.url}</CardTitle>
                 </div>
               </CardHeader>
               <CardContent className="p-0">
@@ -102,12 +93,7 @@ export default async function PastePage({ params }: PastePageProps) {
             </Card>
           </div>
 
-          <PasteStatistics
-            pasteId={params.id}
-            views={paste.views}
-            expiresAt={paste.expiresAt}
-            createdAt={paste.createdAt}
-          />
+          <PasteStatistics pasteUrl={paste.url} totalViews={paste.totalViews} remainingTime={paste.remainingTime} />
         </div>
       </div>
     </div>
