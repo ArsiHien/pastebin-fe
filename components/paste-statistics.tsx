@@ -50,8 +50,23 @@ export function PasteStatistics({
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Format the remaining time for display
+  const formatRemainingTime = (time: string) => {
+    if (time === "NEVER") return "Never";
+    if (time === "BURN_AFTER_READ") return "After viewing";
+    return time;
+  };
+
   // Fetch analytics data when period changes
   const fetchAnalyticsData = async () => {
+    console.log(remainingTime)
+    console.log('________________')
+    if (remainingTime === "After viewing") {
+      setAnalyticsData(null);
+      setIsLoading(false);
+      return;
+    }
+
     setIsLoading(true);
     setError(null);
 
@@ -110,6 +125,14 @@ export function PasteStatistics({
   };
 
   const renderChart = () => {
+    if (remainingTime === "After viewing") {
+      return (
+        <div className="h-[250px] flex items-center justify-center text-muted-foreground">
+          Analytics unavailable for this paste
+        </div>
+      );
+    }
+
     if (isLoading) {
       return <ChartSkeleton />;
     }
@@ -282,7 +305,7 @@ export function PasteStatistics({
             <div className="flex items-center gap-2">
               <Clock className="h-5 w-5 text-muted-foreground" />
               <span className="text-2xl font-bold">
-                {remainingTime || "Never"}
+                {formatRemainingTime(remainingTime)}
               </span>
             </div>
           </CardContent>

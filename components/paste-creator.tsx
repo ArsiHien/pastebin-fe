@@ -61,6 +61,7 @@ export function PasteCreator() {
         description: "Your paste has been created",
       });
     } catch (error) {
+      console.error("Create paste error:", error);
       toast({
         title: "Error",
         description: "Failed to create paste. Please try again.",
@@ -68,6 +69,18 @@ export function PasteCreator() {
       });
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const copyToClipboard = () => {
+    if (pasteUrl) {
+      navigator.clipboard.writeText(pasteUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+      toast({
+        title: "Copied!",
+        description: "Link copied to clipboard",
+      });
     }
   };
 
@@ -114,7 +127,8 @@ export function PasteCreator() {
             <Button
               size="sm"
               variant="ghost"
-              onClick={() => navigator.clipboard.writeText(pasteUrl)}
+              onClick={copyToClipboard}
+              className="hover:bg-primary/10 hover:text-primary transition-colors"
             >
               {copied ? (
                 <Check className="h-4 w-4" />
@@ -131,7 +145,7 @@ export function PasteCreator() {
             <Button variant="outline" onClick={() => setPasteUrl(null)}>
               Create New Paste
             </Button>
-            <Button onClick={() => navigator.clipboard.writeText(pasteUrl)}>
+            <Button onClick={copyToClipboard}>
               {copied ? "Copied!" : "Copy Link"}
             </Button>
           </>

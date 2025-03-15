@@ -1,5 +1,5 @@
-import { PasteCreator } from "@/components/paste-creator"
-import { ThemeToggle } from "@/components/theme-toggle"
+import { PasteCreator } from "@/components/paste-creator";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 export default function Home() {
   return (
@@ -9,8 +9,9 @@ export default function Home() {
           <div className="text-center flex-1">
             <h1 className="text-4xl font-bold tracking-tight mb-2">PasteBin</h1>
             <p className="text-muted-foreground max-w-2xl mx-auto">
-              Share code snippets, notes, and text easily with our modern pastebin service. Create a paste, get a link,
-              and share it with anyone.
+              Share code snippets, notes, and text easily with our modern
+              pastebin service. Create a paste, get a link, and share it with
+              anyone.
             </p>
           </div>
           <div className="flex items-center">
@@ -23,6 +24,5 @@ export default function Home() {
         </div>
       </div>
     </div>
-  )
+  );
 }
-
