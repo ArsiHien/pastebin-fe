@@ -1,7 +1,17 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useState, useEffect } from "react";
+import { BarChartIcon, Clock, Eye } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ChartContainer, ChartTooltipContent } from "@/components/ui/chart";
 import {
   LineChart,
   Line,
@@ -15,37 +25,80 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
-import { ChartContainer, ChartTooltipContent } from "@/components/ui/chart";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Clock, Eye, RefreshCw } from "lucide-react";
+import { ErrorMessage } from "./error-message";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   type AnalyticsResponse,
-  type TimeSeriesPoint,
   fetchHourlyAnalytics,
-  fetchMonthlyAnalytics,
   fetchWeeklyAnalytics,
+  fetchMonthlyAnalytics,
+  fetchPasteStats,
+  type StatsResponse,
 } from "@/lib/api-client";
 import { formatTimestamp } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
-import { ErrorMessage } from "./error-message";
 
-interface PasteStatisticsProps {
+interface PasteStatsDialogProps {
   pasteUrl: string;
-  totalViews: number;
   remainingTime: string;
 }
 
-export function PasteStatistics({
+export function PasteStatsDialog({
   pasteUrl,
-  totalViews,
   remainingTime,
-}: PasteStatisticsProps) {
+}: PasteStatsDialogProps) {
+  const [open, setOpen] = useState(false);
   const [selectedPeriod, setSelectedPeriod] = useState("hourly");
   const [analyticsData, setAnalyticsData] = useState<AnalyticsResponse | null>(
     null
   );
+  const [stats, setStats] = useState<StatsResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Check if this is a burn-after-read paste
+  const isBurnAfterRead = remainingTime === "BURN_AFTER_READ";
+
+  // Fetch data when dialog opens
+  useEffect(() => {
+    if (open && !isBurnAfterRead) {
+      fetchData();
+    }
+  }, [pasteUrl, selectedPeriod, open, isBurnAfterRead]);
+
+  const fetchData = async () => {
+    if (!open || isBurnAfterRead) return;
+
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      // Fetch stats
+      const statsData = await fetchPasteStats(pasteUrl);
+      setStats(statsData);
+
+      // Fetch analytics based on selected period
+      let analyticsData: AnalyticsResponse;
+      switch (selectedPeriod) {
+        case "hourly":
+          analyticsData = await fetchHourlyAnalytics(pasteUrl);
+          break;
+        case "weekly":
+          analyticsData = await fetchWeeklyAnalytics(pasteUrl);
+          break;
+        case "monthly":
+          analyticsData = await fetchMonthlyAnalytics(pasteUrl);
+          break;
+        default:
+          analyticsData = await fetchHourlyAnalytics(pasteUrl);
+      }
+      setAnalyticsData(analyticsData);
+    } catch (error) {
+      console.error("Error fetching data:", error);
+      setError(error instanceof Error ? error.message : "Failed to load data");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   // Format the remaining time for display
   const formatRemainingTime = (time: string) => {
@@ -53,45 +106,6 @@ export function PasteStatistics({
     if (time === "BURN_AFTER_READ") return "After viewing";
     return time;
   };
-
-  // Fetch analytics data when period changes
-  const fetchAnalyticsData = async () => {
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      let data: AnalyticsResponse;
-
-      switch (selectedPeriod) {
-        case "hourly":
-          data = await fetchHourlyAnalytics(pasteUrl);
-          break;
-        case "weekly":
-          data = await fetchWeeklyAnalytics(pasteUrl);
-          break;
-        case "monthly":
-          data = await fetchMonthlyAnalytics(pasteUrl);
-          break;
-        default:
-          data = await fetchHourlyAnalytics(pasteUrl);
-      }
-
-      setAnalyticsData(data);
-    } catch (error) {
-      console.error("Error fetching analytics data:", error);
-      setError(
-        error instanceof Error ? error.message : "Failed to load analytics data"
-      );
-      // Fallback to empty data
-      setAnalyticsData(null);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchAnalyticsData();
-  }, [pasteUrl, selectedPeriod]);
 
   const getChartType = () => {
     switch (selectedPeriod) {
@@ -106,7 +120,7 @@ export function PasteStatistics({
     }
   };
 
-  const formatChartData = (timeSeries: TimeSeriesPoint[]) => {
+  const formatChartData = (timeSeries: any[] = []) => {
     return timeSeries.map((point) => ({
       label: formatTimestamp(point.timestamp, selectedPeriod),
       views: point.viewCount,
@@ -126,19 +140,7 @@ export function PasteStatistics({
     }
 
     if (error) {
-      return (
-        <div className="space-y-4">
-          <ErrorMessage message={error} />
-          <Button
-            variant="outline"
-            className="w-full flex items-center justify-center gap-2"
-            onClick={fetchAnalyticsData}
-          >
-            <RefreshCw className="h-4 w-4" />
-            Retry
-          </Button>
-        </div>
-      );
+      return <ErrorMessage message={error} />;
     }
 
     if (
@@ -278,47 +280,64 @@ export function PasteStatistics({
     }
   };
 
-  return (
-    <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base font-medium">Views</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center gap-2">
-              <Eye className="h-5 w-5 text-muted-foreground" />
-              <span className="text-2xl font-bold">{totalViews}</span>
-            </div>
-          </CardContent>
-        </Card>
+  // Render different content based on whether it's a burn-after-read paste
+  const renderDialogContent = () => {
+    if (isBurnAfterRead) {
+      return (
+        <div className="py-4">
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex flex-col items-center gap-2">
+                <Clock className="h-8 w-8 text-primary" />
+                <p className="text-sm font-medium text-muted-foreground">
+                  Expires In
+                </p>
+                <p className="text-3xl font-bold">After viewing</p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      );
+    }
 
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base font-medium">
-              {remainingTime ? "Expires In" : "Expiration"}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center gap-2">
-              <Clock className="h-5 w-5 text-muted-foreground" />
-              <span className="text-2xl font-bold">
-                {formatRemainingTime(remainingTime)}
-              </span>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+    return (
+      <div className="py-4 space-y-6">
+        {/* Stats Cards */}
+        <div className="grid grid-cols-2 gap-4">
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex flex-col items-center gap-2">
+                <Eye className="h-8 w-8 text-primary" />
+                <p className="text-sm font-medium text-muted-foreground">
+                  Total Views
+                </p>
+                {isLoading ? (
+                  <div className="h-8 flex items-center justify-center">
+                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-primary"></div>
+                  </div>
+                ) : (
+                  <p className="text-3xl font-bold">{stats?.viewCount || 0}</p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex flex-col items-center gap-2">
+                <Clock className="h-8 w-8 text-primary" />
+                <p className="text-sm font-medium text-muted-foreground">
+                  Expires In
+                </p>
+                <p className="text-3xl font-bold">
+                  {formatRemainingTime(remainingTime)}
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
 
-      <Card>
-        <CardHeader className="pb-2">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-base font-medium">
-              View Statistics
-            </CardTitle>
-          </div>
-        </CardHeader>
-        <CardContent>
+        {/* Chart Section */}
+        <div>
           <Tabs
             defaultValue="hourly"
             value={selectedPeriod}
@@ -331,10 +350,28 @@ export function PasteStatistics({
               <TabsTrigger value="monthly">Monthly</TabsTrigger>
             </TabsList>
           </Tabs>
-
           {renderChart()}
-        </CardContent>
-      </Card>
-    </div>
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button variant="outline" className="gap-2">
+          <BarChartIcon className="h-4 w-4" />
+          View Stats
+        </Button>
+      </DialogTrigger>
+      <DialogContent
+        className={isBurnAfterRead ? "sm:max-w-[400px]" : "sm:max-w-[600px]"}
+      >
+        <DialogHeader>
+          <DialogTitle>Paste Statistics</DialogTitle>
+        </DialogHeader>
+        {renderDialogContent()}
+      </DialogContent>
+    </Dialog>
   );
 }

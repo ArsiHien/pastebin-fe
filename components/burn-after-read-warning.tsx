@@ -1,22 +1,28 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { AlertTriangle, Flame } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Alert, AlertDescription } from "@/components/ui/alert"
+import { useState } from "react";
+import { AlertTriangle, Flame } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface BurnAfterReadWarningProps {
-  onConfirm: () => void
+  onConfirm: () => void;
 }
 
 export function BurnAfterReadWarning({ onConfirm }: BurnAfterReadWarningProps) {
-  const [isConfirming, setIsConfirming] = useState(false)
+  const [isConfirming, setIsConfirming] = useState(false);
 
   const handleConfirm = () => {
-    setIsConfirming(true)
-    onConfirm()
-  }
+    setIsConfirming(true);
+    onConfirm();
+  };
 
   return (
     <Card className="w-full max-w-3xl mx-auto">
@@ -35,24 +41,31 @@ export function BurnAfterReadWarning({ onConfirm }: BurnAfterReadWarningProps) {
         >
           <AlertTriangle className="h-4 w-4" />
           <AlertDescription>
-            This paste will be permanently deleted after you view it. You will not be able to access it again.
+            This paste will be permanently deleted after you view it. You will
+            not be able to access it again.
           </AlertDescription>
         </Alert>
 
         <div className="text-center text-muted-foreground">
           <p>This paste was created with "Burn After Read" protection.</p>
           <p>
-            Once you click "View Paste", the content will be displayed and then permanently deleted from our servers.
+            Once you click "View Paste", the content will be displayed and then
+            permanently deleted from our servers.
           </p>
-          <p className="mt-2 font-semibold">Make sure to save the content if you need it!</p>
+          <p className="mt-2 font-semibold">
+            Make sure to save the content if you need it!
+          </p>
         </div>
       </CardContent>
       <CardFooter className="flex justify-center">
-        <Button onClick={handleConfirm} disabled={isConfirming} className="bg-amber-600 hover:bg-amber-700 text-white">
+        <Button
+          onClick={handleConfirm}
+          disabled={isConfirming}
+          className="bg-amber-600 hover:bg-amber-700 text-white"
+        >
           {isConfirming ? "Loading..." : "View Paste"}
         </Button>
       </CardFooter>
     </Card>
-  )
+  );
 }
-

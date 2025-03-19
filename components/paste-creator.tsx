@@ -1,34 +1,22 @@
-"use client";
+"use client"
 
-import { useState } from "react";
-import { Copy, Check } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Label } from "@/components/ui/label";
-import { createPaste } from "@/lib/actions";
-import { useToast } from "@/hooks/use-toast";
+import { useState } from "react"
+import { Copy, Check } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { Textarea } from "@/components/ui/textarea"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Label } from "@/components/ui/label"
+import { createPaste } from "@/lib/actions"
+import { useToast } from "@/hooks/use-toast"
 
 export function PasteCreator() {
-  const [content, setContent] = useState("");
-  const [expiration, setExpiration] = useState("never");
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [pasteUrl, setPasteUrl] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
-  const { toast } = useToast();
+  const [content, setContent] = useState("")
+  const [expiration, setExpiration] = useState("never")
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [pasteUrl, setPasteUrl] = useState<string | null>(null)
+  const [copied, setCopied] = useState(false)
+  const { toast } = useToast()
 
   const handleSubmit = async () => {
     if (!content.trim()) {
@@ -36,53 +24,53 @@ export function PasteCreator() {
         title: "Error",
         description: "Paste content cannot be empty",
         variant: "destructive",
-      });
-      return;
+      })
+      return
     }
 
-    let policyType: "TIMED" | "NEVER" | "BURN_AFTER_READ";
-    let duration: string | null = null;
+    let policyType: "TIMED" | "NEVER" | "BURN_AFTER_READ"
+    let duration: string | null = null
 
     if (expiration === "never") {
-      policyType = "NEVER";
+      policyType = "NEVER"
     } else if (expiration === "burn") {
-      policyType = "BURN_AFTER_READ";
+      policyType = "BURN_AFTER_READ"
     } else {
-      policyType = "TIMED";
-      duration = expiration;
+      policyType = "TIMED"
+      duration = expiration
     }
 
-    setIsSubmitting(true);
+    setIsSubmitting(true)
     try {
-      const result = await createPaste({ content, policyType, duration });
-      setPasteUrl(`${window.location.origin}/paste/${result.id}`);
+      const result = await createPaste({ content, policyType, duration })
+      setPasteUrl(`${window.location.origin}/paste/${result.id}`)
       toast({
         title: "Success!",
         description: "Your paste has been created",
-      });
+      })
     } catch (error) {
-      console.error("Create paste error:", error);
+      console.error("Create paste error:", error)
       toast({
         title: "Error",
         description: "Failed to create paste. Please try again.",
         variant: "destructive",
-      });
+      })
     } finally {
-      setIsSubmitting(false);
+      setIsSubmitting(false)
     }
-  };
+  }
 
   const copyToClipboard = () => {
     if (pasteUrl) {
-      navigator.clipboard.writeText(pasteUrl);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      navigator.clipboard.writeText(pasteUrl)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
       toast({
         title: "Copied!",
         description: "Link copied to clipboard",
-      });
+      })
     }
-  };
+  }
 
   return (
     <Card className="w-full">
@@ -130,11 +118,7 @@ export function PasteCreator() {
               onClick={copyToClipboard}
               className="hover:bg-primary/10 hover:text-primary transition-colors"
             >
-              {copied ? (
-                <Check className="h-4 w-4" />
-              ) : (
-                <Copy className="h-4 w-4" />
-              )}
+              {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
             </Button>
           </div>
         )}
@@ -145,20 +129,15 @@ export function PasteCreator() {
             <Button variant="outline" onClick={() => setPasteUrl(null)}>
               Create New Paste
             </Button>
-            <Button onClick={copyToClipboard}>
-              {copied ? "Copied!" : "Copy Link"}
-            </Button>
+            <Button onClick={copyToClipboard}>{copied ? "Copied!" : "Copy Link"}</Button>
           </>
         ) : (
-          <Button
-            className="w-full"
-            onClick={handleSubmit}
-            disabled={isSubmitting || !content.trim()}
-          >
+          <Button className="w-full" onClick={handleSubmit} disabled={isSubmitting || !content.trim()}>
             {isSubmitting ? "Creating..." : "Create Paste"}
           </Button>
         )}
       </CardFooter>
     </Card>
-  );
+  )
 }
+

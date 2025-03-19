@@ -1,7 +1,17 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useState, useEffect } from "react";
+import { BarChartIcon } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ChartContainer, ChartTooltipContent } from "@/components/ui/chart";
 import {
   LineChart,
   Line,
@@ -15,31 +25,22 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
-import { ChartContainer, ChartTooltipContent } from "@/components/ui/chart";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Clock, Eye, RefreshCw } from "lucide-react";
+import { ChartSkeleton } from "./chart-skeleton";
+import { ErrorMessage } from "./error-message";
 import {
   type AnalyticsResponse,
-  type TimeSeriesPoint,
   fetchHourlyAnalytics,
-  fetchMonthlyAnalytics,
   fetchWeeklyAnalytics,
+  fetchMonthlyAnalytics,
 } from "@/lib/api-client";
 import { formatTimestamp } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
-import { ErrorMessage } from "./error-message";
 
-interface PasteStatisticsProps {
+interface PasteChartDialogProps {
   pasteUrl: string;
-  totalViews: number;
-  remainingTime: string;
 }
 
-export function PasteStatistics({
-  pasteUrl,
-  totalViews,
-  remainingTime,
-}: PasteStatisticsProps) {
+export function PasteChartDialog({ pasteUrl }: PasteChartDialogProps) {
+  const [open, setOpen] = useState(false);
   const [selectedPeriod, setSelectedPeriod] = useState("hourly");
   const [analyticsData, setAnalyticsData] = useState<AnalyticsResponse | null>(
     null
@@ -47,15 +48,16 @@ export function PasteStatistics({
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Format the remaining time for display
-  const formatRemainingTime = (time: string) => {
-    if (time === "NEVER") return "Never";
-    if (time === "BURN_AFTER_READ") return "After viewing";
-    return time;
-  };
+  // Fetch analytics data when period changes or dialog opens
+  useEffect(() => {
+    if (open) {
+      fetchAnalyticsData();
+    }
+  }, [pasteUrl, selectedPeriod, open]);
 
-  // Fetch analytics data when period changes
   const fetchAnalyticsData = async () => {
+    if (!open) return;
+
     setIsLoading(true);
     setError(null);
 
@@ -82,16 +84,11 @@ export function PasteStatistics({
       setError(
         error instanceof Error ? error.message : "Failed to load analytics data"
       );
-      // Fallback to empty data
       setAnalyticsData(null);
     } finally {
       setIsLoading(false);
     }
   };
-
-  useEffect(() => {
-    fetchAnalyticsData();
-  }, [pasteUrl, selectedPeriod]);
 
   const getChartType = () => {
     switch (selectedPeriod) {
@@ -106,7 +103,7 @@ export function PasteStatistics({
     }
   };
 
-  const formatChartData = (timeSeries: TimeSeriesPoint[]) => {
+  const formatChartData = (timeSeries: any[] = []) => {
     return timeSeries.map((point) => ({
       label: formatTimestamp(point.timestamp, selectedPeriod),
       views: point.viewCount,
@@ -115,30 +112,11 @@ export function PasteStatistics({
 
   const renderChart = () => {
     if (isLoading) {
-      return (
-        <div className="h-[250px] flex items-center justify-center">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div>
-            <p className="text-muted-foreground">Loading chart data...</p>
-          </div>
-        </div>
-      );
+      return <ChartSkeleton />;
     }
 
     if (error) {
-      return (
-        <div className="space-y-4">
-          <ErrorMessage message={error} />
-          <Button
-            variant="outline"
-            className="w-full flex items-center justify-center gap-2"
-            onClick={fetchAnalyticsData}
-          >
-            <RefreshCw className="h-4 w-4" />
-            Retry
-          </Button>
-        </div>
-      );
+      return <ErrorMessage message={error} />;
     }
 
     if (
@@ -279,46 +257,18 @@ export function PasteStatistics({
   };
 
   return (
-    <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base font-medium">Views</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center gap-2">
-              <Eye className="h-5 w-5 text-muted-foreground" />
-              <span className="text-2xl font-bold">{totalViews}</span>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base font-medium">
-              {remainingTime ? "Expires In" : "Expiration"}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center gap-2">
-              <Clock className="h-5 w-5 text-muted-foreground" />
-              <span className="text-2xl font-bold">
-                {formatRemainingTime(remainingTime)}
-              </span>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      <Card>
-        <CardHeader className="pb-2">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-base font-medium">
-              View Statistics
-            </CardTitle>
-          </div>
-        </CardHeader>
-        <CardContent>
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button variant="outline" className="gap-2">
+          <BarChartIcon className="h-4 w-4" />
+          View Chart
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-[600px]">
+        <DialogHeader>
+          <DialogTitle>Paste Analytics</DialogTitle>
+        </DialogHeader>
+        <div className="py-4">
           <Tabs
             defaultValue="hourly"
             value={selectedPeriod}
@@ -331,10 +281,9 @@ export function PasteStatistics({
               <TabsTrigger value="monthly">Monthly</TabsTrigger>
             </TabsList>
           </Tabs>
-
           {renderChart()}
-        </CardContent>
-      </Card>
-    </div>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }

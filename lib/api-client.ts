@@ -2,17 +2,20 @@
 import axios from "axios";
 
 // Types
-export interface Paste {
+export interface RetrievePasteResponse {
   url: string;
   content: string;
-  totalViews: number;
-  remainingTime: string; // Can be "NEVER", "BURN_AFTER_READ", or time values like "10minutes", "1hour", etc.
+  remainingTime: string;
+}
+
+export interface StatsResponse {
+  viewCount: number;
 }
 
 export interface CreatePasteRequest {
   content: string;
-  policyType: "TIMED" | "NEVER" | "BURN_AFTER_READ";
-  duration: string | null;
+  policyType: string; // "TIMED", "NEVER", "BURN_AFTER_READ"
+  duration: string | null; // Required for TIMED policy
 }
 
 export interface CreatePasteResponse {
@@ -30,23 +33,65 @@ export interface AnalyticsResponse {
   timeSeries: TimeSeriesPoint[];
 }
 
+// Get API base URL from environment variables with fallback
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080/api";
+
 // Create Axios instance with base URL
 const api = axios.create({
-  baseURL: "http://localhost:8080/api",
+  baseURL: API_BASE_URL,
   headers: {
     "Content-Type": "application/json",
   },
 });
 
 // API functions
-export async function fetchPaste(url: string): Promise<Paste> {
+export async function fetchPastePolicy(url: string): Promise<string> {
   try {
-    const response = await api.get<Paste>(`/pastes/${url}`);
+    const response = await api.get<string>(`/pastes/${url}/policy`);
     return response.data;
   } catch (error) {
     if (axios.isAxiosError(error)) {
       throw new Error(
-        `Failed to fetch paste: ${error.response?.statusText || error.message}`
+        `Failed to fetch paste policy: ${
+          error.response?.statusText || error.message
+        }`
+      );
+    }
+    throw error;
+  }
+}
+
+export async function fetchPasteContent(
+  url: string
+): Promise<RetrievePasteResponse> {
+  try {
+    const response = await api.get<RetrievePasteResponse>(
+      `/pastes/${url}/content`
+    );
+    return response.data;
+  } catch (error) {
+    if (axios.isAxiosError(error)) {
+      throw new Error(
+        `Failed to fetch paste content: ${
+          error.response?.statusText || error.message
+        }`
+      );
+    }
+    throw error;
+  }
+}
+
+export async function fetchPasteStats(url: string): Promise<StatsResponse> {
+  try {
+    const response = await api.get<StatsResponse>(`/pastes/${url}/stats`);
+    return response.data;
+  } catch (error) {
+    if (axios.isAxiosError(error)) {
+      throw new Error(
+        `Failed to fetch paste stats: ${
+          error.response?.statusText || error.message
+        }`
       );
     }
     throw error;
@@ -57,10 +102,12 @@ export async function createPasteApi(
   data: CreatePasteRequest
 ): Promise<CreatePasteResponse> {
   try {
+    console.log("Creating paste with data:", data); // Debug log
     const response = await api.post<CreatePasteResponse>("/pastes", data);
     return response.data;
   } catch (error) {
     if (axios.isAxiosError(error)) {
+      console.error("API Error Response:", error.response?.data); // Debug log
       throw new Error(
         `Failed to create paste: ${error.response?.statusText || error.message}`
       );

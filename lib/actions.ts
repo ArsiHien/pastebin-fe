@@ -1,5 +1,10 @@
 "use server";
-import { createPasteApi, fetchPaste } from "./api-client";
+import {
+  createPasteApi,
+  fetchPasteContent,
+  fetchPastePolicy,
+  fetchPasteStats,
+} from "./api-client";
 
 export async function createPaste({
   content,
@@ -7,14 +12,10 @@ export async function createPaste({
   duration,
 }: {
   content: string;
-  policyType: string;
-  duration: string;
+  policyType: "TIMED" | "NEVER" | "BURN_AFTER_READ";
+  duration: string | null;
 }) {
   try {
-    console.log("content:", content);
-    console.log("policyType:", policyType);
-    console.log("duration:", duration);
-
     const response = await createPasteApi({
       content,
       policyType,
@@ -28,11 +29,29 @@ export async function createPaste({
   }
 }
 
-export async function getPaste(url: string) {
+export async function getPastePolicy(url: string) {
   try {
-    return await fetchPaste(url);
+    return await fetchPastePolicy(url);
   } catch (error) {
-    console.error(`Error fetching paste ${url}:`, error);
+    console.error(`Error fetching paste policy ${url}:`, error);
+    return null;
+  }
+}
+
+export async function getPasteContent(url: string) {
+  try {
+    return await fetchPasteContent(url);
+  } catch (error) {
+    console.error(`Error fetching paste content ${url}:`, error);
+    return null;
+  }
+}
+
+export async function getPasteStats(url: string) {
+  try {
+    return await fetchPasteStats(url);
+  } catch (error) {
+    console.error(`Error fetching paste stats ${url}:`, error);
     return null;
   }
 }
