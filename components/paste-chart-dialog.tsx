@@ -25,7 +25,6 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
-import { ChartSkeleton } from "./chart-skeleton";
 import { ErrorMessage } from "./error-message";
 import {
   type AnalyticsResponse,
@@ -111,9 +110,6 @@ export function PasteChartDialog({ pasteUrl }: PasteChartDialogProps) {
   };
 
   const renderChart = () => {
-    if (isLoading) {
-      return <ChartSkeleton />;
-    }
 
     if (error) {
       return <ErrorMessage message={error} />;

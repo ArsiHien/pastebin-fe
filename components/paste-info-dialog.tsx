@@ -88,7 +88,7 @@ export function PasteInfoDialog({ pasteUrl }: PasteInfoDialogProps) {
                   <div className="flex flex-col items-center gap-2">
                     <Clock className="h-8 w-8 text-primary" />
                     <p className="text-sm font-medium text-muted-foreground">Expires In</p>
-                    <p className="text-3xl font-bold">{formatRemainingTime(stats.remainingTime)}</p>
+                    {/* <p className="text-3xl font-bold">{formatRemainingTime(stats.remainingTime)}</p> */}
                   </div>
                 </CardContent>
               </Card>
